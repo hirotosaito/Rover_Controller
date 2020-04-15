@@ -1,3 +1,4 @@
+#include "BluetoothSerial.h"
 #include <Arduino.h>
 #include <SPI.h>  //(1)SPI通信をするための読み込み
 
@@ -12,11 +13,19 @@
 
 char inChar; // Where to store the character read
 
+#if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED)
+#error Bluetooth is not enabled! Please run `make menuconfig` to and enable it
+#endif
+
+BluetoothSerial SerialBT;
+
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
   Serial1.begin(115200,SERIAL_8N1, RX_PIN, TX_PIN);
-  Serial.write("Vehicle Master Begin");
+  SerialBT.begin("Vehcle Master"); //Bluetooth device name
+  Serial.println("Vehicle Master Begin");
+  Serial.println("The device started, now you can pair it with bluetooth!");
 
     //(3)ステッピングモーター用のピンの準備
   pinMode(PIN_SPI_MOSI, OUTPUT);
@@ -36,9 +45,9 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-  while(Serial.available())
+  while(SerialBT.available())
   {
-    inChar = Serial.read();
+    inChar = SerialBT.read();
     
     if(inChar == 'f') // if the input char == "f"
     {
