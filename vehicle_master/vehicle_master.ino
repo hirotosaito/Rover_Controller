@@ -1,31 +1,25 @@
-#include "BluetoothSerial.h"
+#include "SharpIR.h"
 #include <Arduino.h>
 #include <SPI.h>  //(1)SPI通信をするための読み込み
+#include <Wire.h>
 
 //(2)ステッピングモーター用のピンの定義
 #define PIN_SPI_MOSI 23
 #define PIN_SPI_MISO 19
 #define PIN_SPI_SCK 18
 #define PIN_SPI_SS1 5
+#define ANALOG_PIN 27
 
 #define RX_PIN  21
 #define TX_PIN  22
 
-char inChar; // Where to store the character read
 
-#if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED)
-#error Bluetooth is not enabled! Please run `make menuconfig` to and enable it
-#endif
-
-BluetoothSerial SerialBT;
+SharpIR mysensor(ANALOG_PIN);
 
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
   Serial1.begin(115200,SERIAL_8N1, RX_PIN, TX_PIN);
-  SerialBT.begin("Vehcle Master"); //Bluetooth device name
-  Serial.println("Vehicle Master Begin");
-  Serial.println("The device started, now you can pair it with bluetooth!");
 
     //(3)ステッピングモーター用のピンの準備
   pinMode(PIN_SPI_MOSI, OUTPUT);
@@ -45,37 +39,61 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-  while(SerialBT.available())
-  {
-    inChar = SerialBT.read();
-    
-    if(inChar == 'f') // if the input char == "f"
-    {
+  Serial.print("Strength:");
+  int strength = mysensor.ir_strength();
+  Serial.println(strength);
+  if(strength < 2000) // 前進を続ける
+  {   
+      Serial.println("GO STREIGHT");
       L6470_BACK();
       Serial1.write('f');
-    }
-    else if(inChar == 'b') // if the input char == "b"
-    {
-      L6470_FWRD();
-      Serial1.write('b');
-    }
-    else if(inChar == 's') // if the input char == "s"
-    {
-      L6470_STOP();
-      Serial1.write('s');      
-    }
-    else if(inChar == 'r') // if the input char == "r"
-    {
-      L6470_TURNL();
-      Serial1.write('l');   
-    }
-    else if(inChar == 'l') // if the input char == "l"
-    {
-      L6470_TURNR();
-      Serial1.write('r');    
-    }
   }
-  delay(100);
+  else if(strength > 2000) // 読まってから左回転
+  {   
+      Serial.println("STOP & TURN LEFT");
+      // 一時停止する
+      L6470_STOP();
+      Serial1.write('s'); 
+      //少し待つ
+//      delay(100);
+      //左回転する
+      L6470_TURNR();
+      Serial1.write('r');      
+      delay(1300); 
+  }
+  delay(50);
+
+//  inChar = SerialBT.read();
+//  while(SerialBT.available())
+//  {
+//
+//    
+//    if(inChar == 'f') // if the input char == "f"
+//    {
+//      L6470_BACK();
+//      Serial1.write('f');
+//    }
+//    else if(inChar == 'b') // if the input char == "b"
+//    {
+//      L6470_FWRD();
+//      Serial1.write('b');
+//    }
+//    else if(inChar == 's') // if the input char == "s"
+//    {
+//      L6470_STOP();
+//      Serial1.write('s');      
+//    }
+//    else if(inChar == 'r') // if the input char == "r"
+//    {
+//      L6470_TURNL();
+//      Serial1.write('l');   
+//    }
+//    else if(inChar == 'l') // if the input char == "l"
+//    {
+//      L6470_TURNR();
+//      Serial1.write('r');    
+//    }
+//  }
 }
 
 void L6470_send(unsigned char value,int pin){
